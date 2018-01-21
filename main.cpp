@@ -7,12 +7,13 @@
 //
 
 #include <iostream>
-#include "shm_allocator.h"
+#include "allocator.h"
 
 
 
 int main(int argc, const char * argv[]) {
     // insert code here...
     std::cout << "Hello, World!\n";
+    Allocator allocator("/tmp/test");
     return 0;
 }
