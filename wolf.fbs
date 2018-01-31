@@ -1,0 +1,10 @@
+// Example IDL file for our event's schema.
+
+table WolfEvent{
+  id:int;
+  name:string;
+  key:string;
+  value:float;
+}
+
+root_type WolfEvent;

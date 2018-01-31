@@ -15,7 +15,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <assert.h>
-
+#include <iostream>
+#include <string.h>
+#include <unistd.h>
 struct SuperBlock {
     std::atomic<int> memory_usage {0};
     std::atomic<int> max_memory_size {0};
@@ -29,22 +31,27 @@ public:
         this->shm_fd_ = shm_open(shm_path.c_str(),
                                  O_CREAT | O_RDWR,
                                  0660);
+                                                  
         fchmod(this->shm_fd_, S_IRWXU | S_IRWXG);
     };
     
-    void InitAllocator(){
+    void InitAllocator(int max_memory_size){
+        ftruncate(this->shm_fd_, sizeof(SuperBlock) + max_memory_size);
+
+
         this->super_block_ = (SuperBlock *)mmap(NULL,
                                               sizeof(SuperBlock),
                                               PROT_READ | PROT_WRITE,
                                               MAP_SHARED,
                                               this->shm_fd_,
                                               0);
-        int max_memory_size = this->super_block_->max_memory_size.load();
-        
+
+        this->super_block_->max_memory_size.store(max_memory_size);
+        this->super_block_->memory_usage.store(0);
         munmap(this->super_block_, sizeof(SuperBlock));
         
         char* shared_mem = (char*)mmap(NULL,
-                                       max_memory_size,
+                                       sizeof(SuperBlock) + max_memory_size,
                                        PROT_READ | PROT_WRITE,
                                        MAP_SHARED,
                                        this->shm_fd_,
@@ -59,7 +66,7 @@ public:
         assert(bytes > 0);
         int current_memory_usage = this->super_block_->memory_usage.load();
         int max_memory_size = this->super_block_->max_memory_size.load();
-        if (current_memory_usage + bytes < max_memory_size) {
+        if (current_memory_usage + bytes > max_memory_size) {
             return nullptr;
         }
         
@@ -67,8 +74,8 @@ public:
                                                                         current_memory_usage + bytes)) {
             current_memory_usage = this->super_block_->memory_usage.load();
         }
-        
-        return alloc_ptr_ + current_memory_usage - bytes;
+
+        return this->alloc_ptr_ + current_memory_usage;
     }
     
     void Reset() {
