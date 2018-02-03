@@ -28,7 +28,7 @@ public:
     explicit Allocator(const std::string& shm_path): super_block_(nullptr),
                                                      alloc_ptr_(nullptr),
                                                      shm_path_(shm_path)  {
-        this->shm_fd_ = shm_open(shm_path.c_str(),
+        this->shm_fd_ = open(shm_path.c_str(),
                                  O_CREAT | O_RDWR,
                                  0660);
                                                   
@@ -38,7 +38,7 @@ public:
     void InitAllocator(int max_memory_size){
         ftruncate(this->shm_fd_, sizeof(SuperBlock) + max_memory_size);
 
-
+        std::cout << sizeof(SuperBlock) << std::endl;
         this->super_block_ = (SuperBlock *)mmap(NULL,
                                               sizeof(SuperBlock),
                                               PROT_READ | PROT_WRITE,
@@ -86,6 +86,10 @@ public:
     
     int MemoryUsage() const {
         return this->super_block_->memory_usage.load();
+    }
+    
+    char* MemoryStart() const {
+        return this->alloc_ptr_;
     }
 private:
     SuperBlock* super_block_;

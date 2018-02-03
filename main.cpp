@@ -24,17 +24,35 @@ int main(int argc, const char * argv[]) {
     wolf_builder.add_value(8.88);
     auto wolf_event_offset = wolf_builder.Finish();
     builder.Finish(wolf_event_offset);
-    
+
     char *buf = (char*)builder.GetBufferPointer();
     int size = builder.GetSize();
-    
+
     std::cout << "Hello, World!\n";
-    Allocator allocator("/test_a");
+    Allocator allocator("/Users/wingerted/test_shared_memory_dat");
     allocator.InitAllocator(100);
     char *mm_buf = (char *)allocator.Allocate(size);
 
 
     memcpy(mm_buf, buf, size);
+
     
+    
+    auto wolf = GetWolfEvent(mm_buf);
+    std::cout << wolf->id() << std::endl;
+    
+    flatbuffers::FlatBufferBuilder builder2(1024);
+    WolfEventBuilder wolf_builder2(builder);
+    wolf_builder2.add_id(200);
+    wolf_builder2.add_key(key);
+    wolf_builder2.add_name(name);
+    wolf_builder2.add_value(28.88);
+    auto wolf_event_offset2 = wolf_builder.Finish();
+    builder.Finish(wolf_event_offset2);
+    char *buf2 = (char*)builder.GetBufferPointer();
+    int size2 = builder.GetSize();
+    memcpy(mm_buf, buf2, size2);
+    
+    std::cout << wolf->id() << std::endl;
     return 0;
 }
