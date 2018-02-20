@@ -175,7 +175,7 @@ auto LockFreeSkipList<Key, Comparator>::FindLessThan(Key key) -> Node* {
                 if (curr == nullptr) {
                     break;
                 }
-                if (curr->key < key) {
+                if (this->cmp_(curr->key, key) < 0) {
                     pred = curr;
                     curr = this->GetNodeByOffset(curr->GetRef(i)->load().next_offset);
                 } else {
