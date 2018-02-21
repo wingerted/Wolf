@@ -14,6 +14,7 @@
 #include <chrono>
 
 #include "shm_manager.h"
+#include "random.h"
 
 namespace skiplist{
     
@@ -33,7 +34,7 @@ struct DefaultComparator {
 template<typename Key, class Comparator = DefaultComparator<Key>>
 class LockFreeSkipList {
 public:
-    const static int kMaxHeight {12};
+    const static int kMaxHeight {24};
 private:
     // 这部分Node需要放在共享内存中, 所以需要是POD类型
     // TODO:: 共享内存中最大的Node数量受限于Node的size和next中存储的索引值的上限,即如果next使用long则无法做无锁mark
@@ -62,7 +63,8 @@ private:
                          Node** second_nodes,
                          bool* error_flag);
 private:
-    std::minstd_rand rnd_;
+    //std::minstd_rand rnd_;
+    Random rnd_;
     Comparator compare_;
     ShmManager* shm_manager_;
     LockFreeSkipList<Key, Comparator>::Node* head_;
@@ -111,7 +113,8 @@ LockFreeSkipList<Key, Comparator>::LockFreeSkipList(ShmManager* shm_manager,
                                                     bool reset,
                                                     Comparator cmp):
     shm_manager_(shm_manager),
-    rnd_(static_cast<unsigned int>(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()))),
+    //rnd_(static_cast<unsigned int>(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()))),
+    rnd_(0xdeadbeef),
     compare_(cmp) {
         
     if (reset) {
@@ -238,8 +241,18 @@ bool LockFreeSkipList<Key, Comparator>::FindWindowInner(Node* start_node,
 
 template<typename Key, class Comparator>
 int LockFreeSkipList<Key, Comparator>::RandomHeight() {
-    std::uniform_int_distribution<unsigned> u(0, kMaxHeight - 1);
-    return u(this->rnd_);
+    
+    static const unsigned int kBranching = 4;
+    int height = 1;
+    while (height < kMaxHeight && ((rnd_.Next() % kBranching) == 0)) {
+        height++;
+    }
+    assert(height > 0);
+    assert(height <= kMaxHeight);
+    return height;
+//
+//    std::uniform_int_distribution<unsigned> u(0, kMaxHeight - 1);
+//    return u(this->rnd_);
 }
 
 template<typename Key, class Comparator>
