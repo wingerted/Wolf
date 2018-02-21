@@ -53,7 +53,7 @@ public:
 private:
     int RandomHeight();
     Node* NewNode(Key key, int height);
-    Node* GetNodeByOffset(int offset);
+    Node* GetNodeByOffset(uint32_t offset);
     bool FindWindow(Key key,
                     Node** first_nodes,
                     Node** second_nodes);
@@ -73,22 +73,22 @@ private:
 template<typename Key, class Comparator>
 struct LockFreeSkipList<Key, Comparator>::Ref {
     Ref() = default;
-    Ref(int offset, bool mark): next_offset(offset), mark_removed(mark) {}
+    Ref(uint32_t offset, bool mark): next_offset(offset), mark_removed(mark) {}
     Ref(Node* node) {
         if (node != nullptr) {
             next_offset = node->self_offset;
         }
     }
-    int next_offset {0};
+    uint32_t next_offset {0};
     bool mark_removed {false};
     char padding[3] {0}; //这里需要手工初始化字节对齐的字节
 };
 
 template<typename Key, class Comparator>
 struct LockFreeSkipList<Key, Comparator>::Node {
-    Node(int in_key, int in_offset, int in_height): key(in_key),
-                                                    self_offset(in_offset),
-                                                    height(in_height) {
+    Node(int in_key, uint32_t in_offset, int in_height): key(in_key),
+                                                        self_offset(in_offset),
+                                                        height(in_height) {
         for (int i=0; i<kMaxHeight; ++i) {
             this->ref[i] = {0, false};
         }
@@ -104,7 +104,7 @@ struct LockFreeSkipList<Key, Comparator>::Node {
 
     int height;
     Key key;
-    int self_offset;
+    uint32_t self_offset;
     std::atomic<Ref> ref[kMaxHeight];
 };
 
@@ -129,7 +129,7 @@ LockFreeSkipList<Key, Comparator>::LockFreeSkipList(ShmManager* shm_manager,
 }
 
 template<typename Key, class Comparator>
-auto LockFreeSkipList<Key, Comparator>::GetNodeByOffset(int offset) -> Node*{
+auto LockFreeSkipList<Key, Comparator>::GetNodeByOffset(uint32_t offset) -> Node*{
     if (offset == 0) {
         return nullptr;
     } else {
@@ -139,10 +139,10 @@ auto LockFreeSkipList<Key, Comparator>::GetNodeByOffset(int offset) -> Node*{
     
 template<typename Key, class Comparator>
 auto LockFreeSkipList<Key, Comparator>::NewNode(Key key, int height) -> Node* {
-    long node_offset;
+    uint32_t node_offset;
     char* node_buffer;
     std::tie(node_offset, node_buffer) = this->shm_manager_->Allocate(sizeof(Node));
-    return new (node_buffer) Node(key, (int)node_offset, height);
+    return new (node_buffer) Node(key, node_offset, height);
 }
 
 template<typename Key, class Comparator>

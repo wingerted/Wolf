@@ -10,27 +10,27 @@
 #define shm_manager_h
 
 #include <utility>
-#include "allocator.h"
+#include "shm_allocator.h"
 
 
 class ShmManager {
 public:
-    ShmManager(Allocator* allocator);
-    std::pair<long, char*> Allocate(int bytes);
-    char* GetBufferByIndex(long index);
+    ShmManager(ShmAllocator* allocator);
+    std::pair<uint32_t, char*> Allocate(int bytes);
+    char* GetBufferByIndex(uint32_t index);
 private:
-    Allocator* allocator_;
+    ShmAllocator* allocator_;
 };
 
-ShmManager::ShmManager(Allocator* allocator): allocator_(allocator) {}
+ShmManager::ShmManager(ShmAllocator* allocator): allocator_(allocator) {}
 
-std::pair<long, char*> ShmManager::Allocate(int bytes) {
+std::pair<uint32_t, char*> ShmManager::Allocate(int bytes) {
     char* buffer = this->allocator_->Allocate(bytes);
     
-    return {(long)(buffer - this->allocator_->MemoryStart()), buffer};
+    return {(uint32_t)(buffer - this->allocator_->MemoryStart()), buffer};
 }
 
-char* ShmManager::GetBufferByIndex(long index) {
+char* ShmManager::GetBufferByIndex(uint32_t index) {
     return this->allocator_->MemoryStart() + index;
 }
 

@@ -18,23 +18,23 @@
 #include <unistd.h>
 
 struct SuperBlock {
-    std::atomic<int> memory_usage {0};
-    std::atomic<int> max_memory_size {0};
+    std::atomic<uint32_t> memory_usage {0};
+    std::atomic<uint32_t> max_memory_size {0};
 };
 
-class Allocator {
+class ShmAllocator {
 public:
-    static Allocator& GetInstance(const std::string& shm_path,
-                                  int max_memory_size = 0,
+    static ShmAllocator& GetInstance(const std::string& shm_path,
+                                  uint32_t max_memory_size = 0,
                                   bool force_reset = false) {
-        static Allocator instance(shm_path, max_memory_size, force_reset);
+        static ShmAllocator instance(shm_path, max_memory_size, force_reset);
         return instance;
     }
     
-    char* Allocate(int bytes) {
+    char* Allocate(uint32_t bytes) {
         assert(bytes > 0);
-        int current_memory_usage = this->super_block_->memory_usage.load();
-        int max_memory_size = this->super_block_->max_memory_size.load();
+        uint32_t current_memory_usage = this->super_block_->memory_usage.load();
+        uint32_t max_memory_size = this->super_block_->max_memory_size.load();
         if (current_memory_usage + bytes > max_memory_size) {
             return nullptr;
         }
@@ -51,7 +51,7 @@ public:
         return this->begin_alloc_ptr_ + current_memory_usage;
     }
     
-    int MemoryUsage() const {
+    uint32_t MemoryUsage() const {
         return this->super_block_->memory_usage.load();
     }
     
@@ -60,7 +60,7 @@ public:
     }
     
 private:
-    Allocator(const std::string& shm_path, int max_memory_size = 0, bool force_reset = false):
+    ShmAllocator(const std::string& shm_path, uint32_t max_memory_size = 0, bool force_reset = false):
     super_block_(nullptr),
     begin_alloc_ptr_(nullptr) {
         
@@ -70,7 +70,7 @@ private:
         
         fchmod(this->shm_fd_, S_IRWXU | S_IRWXG);
         
-        int memory_file_size = this->Init(max_memory_size, force_reset);
+        uint32_t memory_file_size = this->Init(max_memory_size, force_reset);
         // 共享内存文件已经初始化完毕, 进行成员变量填充
         char* shared_mem = (char*)mmap(NULL,
                                        memory_file_size,
@@ -84,7 +84,7 @@ private:
     
     // Init函数可以多进程/线程调用, 但是实际对SharedMemory的Init操作只会被执行一次
     // force_reset很危险, 可以直接初始化SuperBlock中的参数, 无论这块共享内存是否初始化过
-    int Init(int max_memory_size, bool force_reset = false){
+    uint32_t Init(uint32_t max_memory_size, bool force_reset = false){
         // 对共享内存文件上锁, lockf基于POSIX是线程安全的上锁方式
         ::lockf(this->shm_fd_, F_LOCK, 0);
         
@@ -94,7 +94,7 @@ private:
             /* TODO: check the value of errno */
         }
         
-        int init_memory_file_size = (int)file_stat.st_size;
+        uint32_t init_memory_file_size = (uint32_t)file_stat.st_size;
         
         // 如果文件大小小于SuperBlock的大小, 则认为这块共享内存文件没有初始化过
         if (max_memory_size > 0 &&
@@ -119,7 +119,7 @@ private:
     }
 
 private:
-    int shm_fd_;
+    uint32_t shm_fd_;
     char* begin_alloc_ptr_;
     SuperBlock* super_block_;
 };
