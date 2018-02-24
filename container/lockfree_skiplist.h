@@ -6,35 +6,23 @@
 //  Copyright © 2018年 Winger Cheng. All rights reserved.
 //
 // Key必须是POD类型
-
+#pragma once
 
 #include <string>
 #include <atomic>
 #include <random>
 #include <chrono>
 
+#include "comparator.h"
 #include "shm_manager.h"
 #include "random.h"
 
-namespace skiplist{
-    
-template<typename Key>
-struct DefaultComparator {
-    int operator()(const Key& a, const Key& b) const {
-        if (a < b) {
-            return -1;
-        } else if (a > b) {
-            return +1;
-        } else {
-            return 0;
-        }
-    }
-};
+namespace container{
 
 template<typename Key, class Comparator = DefaultComparator<Key>>
 class LockFreeSkipList {
 public:
-    const static int kMaxHeight {24};
+    const static int kMaxHeight {12};
 private:
     // 这部分Node需要放在共享内存中, 所以需要是POD类型
     // TODO:: 共享内存中最大的Node数量受限于Node的size和next中存储的索引值的上限,即如果next使用long则无法做无锁mark
@@ -86,9 +74,9 @@ struct LockFreeSkipList<Key, Comparator>::Ref {
 
 template<typename Key, class Comparator>
 struct LockFreeSkipList<Key, Comparator>::Node {
-    Node(int in_key, uint32_t in_offset, int in_height): key(in_key),
-                                                        self_offset(in_offset),
-                                                        height(in_height) {
+    Node(int in_key, uint32_t in_offset, int in_height): height(in_height),
+                                                         key(in_key),
+                                                         self_offset(in_offset) {
         for (int i=0; i<kMaxHeight; ++i) {
             this->ref[i] = {0, false};
         }
@@ -112,10 +100,10 @@ template<typename Key, class Comparator>
 LockFreeSkipList<Key, Comparator>::LockFreeSkipList(ShmManager* shm_manager,
                                                     bool reset,
                                                     Comparator cmp):
-    shm_manager_(shm_manager),
     //rnd_(static_cast<unsigned int>(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()))),
     rnd_(0xdeadbeef),
-    compare_(cmp) {
+    compare_(cmp),
+    shm_manager_(shm_manager) {
         
     if (reset) {
         this->head_ = this->NewNode(0, kMaxHeight);
@@ -263,7 +251,12 @@ bool LockFreeSkipList<Key, Comparator>::Add(Key key) {
     Node* second_nodes[kMaxHeight];
     
     while (true) {
+//        auto first = std::chrono::system_clock::now();
         bool found = this->FindWindow(key, first_nodes, second_nodes);
+//        auto second = std::chrono::system_clock::now();
+//        std::cout
+//        << " Time: " << std::chrono::duration_cast<std::chrono::nanoseconds>(second - first).count() << " us"
+//        << std::endl;
         if (found) {
             // 不支持重复的Key
             return false;

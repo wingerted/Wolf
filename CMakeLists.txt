@@ -1,0 +1,13 @@
+cmake_minimum_required(VERSION 3.3)
+
+PROJECT (Wolf)
+
+ADD_COMPILE_OPTIONS(-std=c++11 -g -Wall)
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/)
+
+SET (SRCS
+	demo/cpp_demo.cpp
+)
+
+ADD_EXECUTABLE(demo ${SRCS})
