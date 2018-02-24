@@ -21,7 +21,7 @@ To be simple and fast, when it allocate a buffer it will never use the buffer ag
                           1000,                      // shared memory max size
                           true);                     // reset shared memory flag
                           
- TestNode* buffer = (TestNode*)shm.Allocate(50);     // allocate memory just like malloc
+ TestNode* buffer = (TestNode*)shm.Allocate(sizeof(TestNode));     // allocate memory just like malloc
 ~~~~ 
 
 
@@ -45,10 +45,13 @@ Easy to use is the most important !
    #include "container/shm_manager.h"
    #include "container/lockfree_skiplist.h"
    
-   area::ShmArea area = area::ShmArea("test_shared_memory_dat", 10000000, true);
-   // shm_manager for conatiner just for the interface can be easy to use
-   container::ShmManager* shm_manager = new container::ShmManager(&area); 
-   container::LockFreeSkipList<int> list(shm_manager, true);
+   auto area = area::ShmArea("test_shared_memory_dat", 
+                             10000000,
+                             true); // If you want to open from exist memory, just pass false
+                             
+   auto* shm_manager = new container::ShmManager(&area); 
+   
+   container::LockFreeSkipList<int> list(shm_manager, true); // If you want to open from exist skiplist, just pass false
    
    for (int i=0; i<20000; ++i) {
            list.Add(i);
