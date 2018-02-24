@@ -111,7 +111,7 @@ LockFreeSkipList<Key, Comparator>::LockFreeSkipList(ShmManager* shm_manager,
             this->head_->SetRef(i, {0, false});
         }
     } else {
-        this->head_ = (Node*)this->shm_manager_->GetBufferByIndex(0);
+        this->head_ = (Node*) this->shm_manager_->GetBufferByOffset(0);
     }
 
 }
@@ -121,7 +121,7 @@ auto LockFreeSkipList<Key, Comparator>::GetNodeByOffset(uint32_t offset) -> Node
     if (offset == 0) {
         return nullptr;
     } else {
-        return (Node*)this->shm_manager_->GetBufferByIndex(offset);
+        return (Node*) this->shm_manager_->GetBufferByOffset(offset);
     }
 }
     

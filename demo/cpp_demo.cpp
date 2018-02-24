@@ -13,6 +13,7 @@
 #include "area/shm_area.h"
 
 #include "container/lockfree_skiplist.h"
+#include "container/lockfree_linklist.h"
 #include "container/shm_manager.h"
 // #include <folly/ConcurrentSkipList.h>
 

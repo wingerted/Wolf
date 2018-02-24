@@ -6,26 +6,14 @@
 //  Copyright © 2018年 Winger Cheng. All rights reserved.
 //
 
-#ifndef lockfree_linked_list_h
-#define lockfree_linked_list_h
+#pragma once
 
 #include <atomic>
 #include <utility>
 #include "shm_manager.h"
+#include "comparator.h"
 
-namespace linklist {
-template<typename Key>
-struct DefaultComparator {
-    int operator()(const Key& a, const Key& b) const {
-        if (a < b) {
-            return -1;
-        } else if (a > b) {
-            return +1;
-        } else {
-            return 0;
-        }
-    }
-};
+namespace container {
 
 template<typename Key, class Comparator = DefaultComparator<Key>>
 class LockFreeLinkList {
@@ -72,7 +60,7 @@ LockFreeLinkList<Key, Comparator>::LockFreeLinkList(ShmManager* shm_manager,
         this->head_ = this->NewNode(0);
         this->head_->ref = {0, false};
     } else {
-        this->head_ = (Node*)this->shm_manager_->GetBufferByIndex(0);
+        this->head_ = (Node*) this->shm_manager_->GetBufferByOffset(0);
     }
 }
 
@@ -90,7 +78,7 @@ auto LockFreeLinkList<Key, Comparator>::GetNodeByOffset(int offset) -> Node*{
     if (offset == 0) {
         return nullptr;
     } else {
-        return (Node*)this->shm_manager_->GetBufferByIndex(offset);
+        return (Node*) this->shm_manager_->GetBufferByOffset(offset);
     }
 }
 
@@ -210,4 +198,3 @@ bool LockFreeLinkList<Key, Comparator>::Remove(Key key) {
     }
 }
 }
-#endif /* lockfree_linked_list_h */

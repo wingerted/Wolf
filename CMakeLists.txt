@@ -7,7 +7,12 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/)
 
 SET (SRCS
-	demo/cpp_demo.cpp
-)
+        demo/cpp_demo.cpp
+        area/shm_area.cpp
+        container/comparator.h
+		container/shm_manager.cpp
+        container/random.h
+        container/lockfree_linklist.h
+        container/lockfree_skiplist.h)
 
 ADD_EXECUTABLE(demo ${SRCS})
