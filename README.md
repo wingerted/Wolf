@@ -1,13 +1,13 @@
-#Wolf -- a simple shared memory container
+# Wolf -- a simple shared memory container
 
-##Module
+## Module
 
-###Area
+### Area
 Area is the interface easy to create or load a shared memory buffer. 
 It can be use in multi thread or process.
 To be simple and fast, when it allocate a buffer it will never use the buffer again.
 
-#####usage: 
+##### usage: 
 ~~~~
  #include "area/shm_area.h"
  
@@ -25,12 +25,12 @@ To be simple and fast, when it allocate a buffer it will never use the buffer ag
 ~~~~ 
 
 
-###Container
+### Container
 Container if a set of structure base on area. 
 For more easy to use, it's designed as template.
 Easy to use is the most important !
 
-1. ####LockFreeSkipList
+1. #### LockFreeSkipList
    
    Design for multi thread and process, it can be use by multi writer and multi reader.
    The algorithm is from *The Art of Multiprocessor Programming By Maurice Herlihy, Nir Shavit*
@@ -39,7 +39,7 @@ Easy to use is the most important !
    
    Atomic library can be used in shared memory and you can test it by the code shared_memory_atomic_test.cpp in test folder.
    
-   #####usage:
+   ##### usage:
    ~~~~
    #include "area/shm_area.h"
    #include "container/shm_manager.h"
