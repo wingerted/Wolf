@@ -18,20 +18,6 @@
 #include <cassert>
 
 namespace area {
-class ShmAreaException : public std::exception {
- public:
-  ShmAreaException(uint32_t need, uint32_t used, uint32_t max)
-      : need_(need), used_(used), max_(max) {}
-
-  virtual const char *what() const throw() {
-    return "No Enough Memory For Alloc Bytes";
-  }
-
- private:
-  uint32_t need_;
-  uint32_t used_;
-  uint32_t max_;
-};
 
 struct SuperBlock {
   std::atomic<uint32_t> memory_usage{0};

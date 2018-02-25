@@ -4,6 +4,7 @@
 
 #include "shm_area.h"
 
+
 namespace area {
     ShmArea::ShmArea(const std::string &shm_path,
                      uint32_t max_memory_size,
@@ -31,7 +32,7 @@ namespace area {
         uint32_t max_memory_size = this->super_block_->max_memory_size.load();
 
         if (bytes > max_memory_size - current_memory_usage) {
-            throw ShmAreaException(bytes, current_memory_usage, max_memory_size);
+            throw std::bad_alloc();
         }
 
         // 对共享内存中存储的memory_usage进行CAS操作,
