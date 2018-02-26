@@ -19,7 +19,7 @@
 
 namespace container{
 
-template<typename Key, class Comparator = DefaultComparator<Key>>
+template<typename Key, typename Value, class Comparator = DefaultComparator<Key>>
 class LockFreeSkipList {
 public:
     const static int kMaxHeight {12};
@@ -34,13 +34,13 @@ public:
                      bool reset = false,
                      Comparator cmp = DefaultComparator<Key>());
     
-    bool Add(Key key);
+    bool Add(Key key, Value value);
     bool Remove(Key key);
-    Node* FindLessThan(Key key);
+    Value FindLessThan(Key key);
     
 private:
     int RandomHeight();
-    Node* NewNode(Key key, int height);
+    Node* NewNode(Key key, Value value, int height);
     Node* GetNodeByOffset(uint32_t offset);
     bool FindWindow(Key key,
                     Node** first_nodes,
@@ -55,11 +55,11 @@ private:
     Random rnd_;
     Comparator compare_;
     ShmManager* shm_manager_;
-    LockFreeSkipList<Key, Comparator>::Node* head_;
+    LockFreeSkipList<Key, Value, Comparator>::Node* head_;
 };
 
-template<typename Key, class Comparator>
-struct LockFreeSkipList<Key, Comparator>::Ref {
+template<typename Key, typename Value, class Comparator>
+struct LockFreeSkipList<Key, Value, Comparator>::Ref {
     Ref() = default;
     Ref(uint32_t offset, bool mark): next_offset(offset), mark_removed(mark) {}
     Ref(Node* node) {
@@ -72,11 +72,13 @@ struct LockFreeSkipList<Key, Comparator>::Ref {
     char padding[3] {0}; //这里需要手工初始化字节对齐的字节
 };
 
-template<typename Key, class Comparator>
-struct LockFreeSkipList<Key, Comparator>::Node {
-    Node(int in_key, uint32_t in_offset, int in_height): height(in_height),
-                                                         key(in_key),
-                                                         self_offset(in_offset) {
+template<typename Key, typename Value, class Comparator>
+struct LockFreeSkipList<Key, Value, Comparator>::Node {
+    Node(Key in_key, Value in_value,
+         uint32_t in_offset, int in_height): height(in_height),
+                                             key(in_key),
+                                             value(in_value),
+                                             self_offset(in_offset) {
         for (int i=0; i<kMaxHeight; ++i) {
             this->ref[i] = {0, false};
         }
@@ -92,21 +94,22 @@ struct LockFreeSkipList<Key, Comparator>::Node {
 
     int height;
     Key key;
+    Value value;
     uint32_t self_offset;
     std::atomic<Ref> ref[kMaxHeight];
 };
 
-template<typename Key, class Comparator>
-LockFreeSkipList<Key, Comparator>::LockFreeSkipList(ShmManager* shm_manager,
-                                                    bool reset,
-                                                    Comparator cmp):
+template<typename Key, typename Value, class Comparator>
+LockFreeSkipList<Key, Value, Comparator>::LockFreeSkipList(ShmManager* shm_manager,
+                                                           bool reset,
+                                                           Comparator cmp):
     //rnd_(static_cast<unsigned int>(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()))),
     rnd_(0xdeadbeef),
     compare_(cmp),
     shm_manager_(shm_manager) {
         
     if (reset) {
-        this->head_ = this->NewNode(0, kMaxHeight);
+        this->head_ = this->NewNode(Key(), Value(), kMaxHeight);
         for (int i = 0; i < kMaxHeight; i++) {
             this->head_->SetRef(i, {0, false});
         }
@@ -116,8 +119,8 @@ LockFreeSkipList<Key, Comparator>::LockFreeSkipList(ShmManager* shm_manager,
 
 }
 
-template<typename Key, class Comparator>
-auto LockFreeSkipList<Key, Comparator>::GetNodeByOffset(uint32_t offset) -> Node*{
+template<typename Key, typename Value, class Comparator>
+auto LockFreeSkipList<Key, Value, Comparator>::GetNodeByOffset(uint32_t offset) -> Node*{
     if (offset == 0) {
         return nullptr;
     } else {
@@ -125,16 +128,16 @@ auto LockFreeSkipList<Key, Comparator>::GetNodeByOffset(uint32_t offset) -> Node
     }
 }
     
-template<typename Key, class Comparator>
-auto LockFreeSkipList<Key, Comparator>::NewNode(Key key, int height) -> Node* {
+template<typename Key, typename Value, class Comparator>
+auto LockFreeSkipList<Key, Value, Comparator>::NewNode(Key key, Value value, int height) -> Node* {
     uint32_t node_offset;
     char* node_buffer;
     std::tie(node_offset, node_buffer) = this->shm_manager_->Allocate(sizeof(Node));
-    return new (node_buffer) Node(key, node_offset, height);
+    return new (node_buffer) Node(key, value, node_offset, height);
 }
 
-template<typename Key, class Comparator>
-bool LockFreeSkipList<Key, Comparator>::FindWindow(Key key,
+template<typename Key, typename Value, class Comparator>
+bool LockFreeSkipList<Key, Value, Comparator>::FindWindow(Key key,
                                                    Node** first_nodes,
                                                    Node** second_nodes) {
     while (true) {
@@ -148,8 +151,8 @@ bool LockFreeSkipList<Key, Comparator>::FindWindow(Key key,
     }
 }
 
-template<typename Key, class Comparator>
-auto LockFreeSkipList<Key, Comparator>::FindLessThan(Key key) -> Node* {
+template<typename Key, typename Value, class Comparator>
+Value LockFreeSkipList<Key, Value, Comparator>::FindLessThan(Key key) {
     Node* pred = this->head_;
     for (int i=kMaxHeight-1; i>=0; --i) {
         Node* curr = this->GetNodeByOffset(pred->GetRef(i)->load().next_offset);
@@ -175,12 +178,12 @@ auto LockFreeSkipList<Key, Comparator>::FindLessThan(Key key) -> Node* {
             }
         }
     }
-    
-    return pred;
+
+    return pred->value;
 }
     
-template<typename Key, class Comparator>
-bool LockFreeSkipList<Key, Comparator>::FindWindowInner(Node* start_node,
+template<typename Key, typename Value, class Comparator>
+bool LockFreeSkipList<Key, Value, Comparator>::FindWindowInner(Node* start_node,
                                                         Key key,
                                                         Node** first_nodes,
                                                         Node** second_nodes,
@@ -227,8 +230,8 @@ bool LockFreeSkipList<Key, Comparator>::FindWindowInner(Node* start_node,
     return curr == nullptr ? false : (curr->key == key); // 这里已经进行到最底层, 如果找到key则返回true
 }
 
-template<typename Key, class Comparator>
-int LockFreeSkipList<Key, Comparator>::RandomHeight() {
+template<typename Key, typename Value, class Comparator>
+int LockFreeSkipList<Key, Value, Comparator>::RandomHeight() {
     
     static const unsigned int kBranching = 4;
     int height = 1;
@@ -243,8 +246,8 @@ int LockFreeSkipList<Key, Comparator>::RandomHeight() {
 //    return u(this->rnd_);
 }
 
-template<typename Key, class Comparator>
-bool LockFreeSkipList<Key, Comparator>::Add(Key key) {
+template<typename Key, typename Value, class Comparator>
+bool LockFreeSkipList<Key, Value, Comparator>::Add(Key key, Value value) {
     int height = this->RandomHeight();
 
     Node* first_nodes[kMaxHeight];
@@ -261,7 +264,7 @@ bool LockFreeSkipList<Key, Comparator>::Add(Key key) {
             // 不支持重复的Key
             return false;
         } else {
-            Node* new_node = this->NewNode(key, height);
+            Node* new_node = this->NewNode(key, value, height);
             for (int i=0; i<height; ++i) {
                 Ref ref_to_second = {second_nodes[i]};
                 new_node->SetRef(i, ref_to_second);
@@ -292,8 +295,8 @@ bool LockFreeSkipList<Key, Comparator>::Add(Key key) {
     }
 }
     
-template<typename Key, class Comparator>
-bool LockFreeSkipList<Key, Comparator>::Remove(Key key) {
+template<typename Key, typename Value, class Comparator>
+bool LockFreeSkipList<Key, Value, Comparator>::Remove(Key key) {
     Node* first_nodes[kMaxHeight];
     Node* second_nodes[kMaxHeight];
     while (true) {

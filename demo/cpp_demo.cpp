@@ -24,8 +24,8 @@
 
 int main(int argc, const char * argv[]) {
 
-    Wolf<int> wolf_home("/Users/wingerted/test_shared_memory_dat", 10000000, true);
-    wolf_home.Add(1);
+    Wolf<int, int> wolf_home("/Users/wingerted/test_shared_memory_dat", 10000000, true);
+    wolf_home.Add(1, 1);
 
 
 //    // insert code here...
@@ -92,10 +92,10 @@ int main(int argc, const char * argv[]) {
 //
     auto first = std::chrono::system_clock::now();
 
-    container::LockFreeSkipList<int> list(shm_manager2, true);
+    container::LockFreeSkipList<int, int> list(shm_manager2, true);
     for (int i=0; i<20000; ++i) {
         //auto first = std::chrono::system_clock::now();
-        list.Add(i);
+        list.Add(i, i);
         //auto second = std::chrono::system_clock::now();
 //        std::cout
 //            << "Index: " << i

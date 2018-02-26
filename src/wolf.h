@@ -11,7 +11,7 @@
 #include "core/container/lockfree_linklist.h"
 #include "core/container/shm_manager.h"
 
-template <typename Data>
+template <typename Index, typename Data>
 class Wolf{
 public:
     Wolf(const std::string& index_path,
@@ -29,22 +29,22 @@ public:
         auto* shm_manager = new container::ShmManager(allocator);
 
         if (data_path.empty()) {
-            this->inner_data_ = new container::LockFreeSkipList<Data>(shm_manager, index_reset_flag);
+            this->inner_data_ = new container::LockFreeSkipList<Index, Data>(shm_manager, index_reset_flag);
         } else {
-            this->index_ = new container::LockFreeSkipList<uint32_t>(shm_manager, index_reset_flag);
+            this->index_ = new container::LockFreeSkipList<Index, uint32_t>(shm_manager, index_reset_flag);
             this->data_area_ = new area::ShmArea(data_path, data_max_size, data_reset_flag);
         }
     }
 
-    void Add(const Data& data) {
+    void Add(const Index& index, const Data& data) {
         if (this->inner_data_ != nullptr) {
-            this->inner_data_->Add(data);
+            this->inner_data_->Add(index, data);
         } else {
-//            auto* buffer = this->data_area_->Allocate(sizeof(Data));
-//            memcpy(buffer, &data, sizeof(Data));
-//
-//            auto offset = (uint32_t)(buffer - this->data_area_->MemoryStart());
-            //this->index_->Add(offset);
+            auto* buffer = this->data_area_->Allocate(sizeof(Data));
+            memcpy(buffer, &data, sizeof(Data));
+
+            auto offset = (uint32_t)(buffer - this->data_area_->MemoryStart());
+            this->index_->Add(index, offset);
         }
     }
 
@@ -59,7 +59,7 @@ private:
     const std::string data_path_;
     uint32_t data_max_size_;
     bool data_reset_flag_;
-    container::LockFreeSkipList<Data>* inner_data_ = nullptr;
-    container::LockFreeSkipList<uint32_t>* index_ = nullptr;
+    container::LockFreeSkipList<Index, Data>* inner_data_ = nullptr;
+    container::LockFreeSkipList<Index, uint32_t>* index_ = nullptr;
     area::ShmArea* data_area_ = nullptr;
 };
