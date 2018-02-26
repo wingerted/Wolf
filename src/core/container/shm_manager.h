@@ -9,7 +9,7 @@
 #pragma once
 
 #include <utility>
-#include "area/shm_area.h"
+#include "core/area/shm_area.h"
 
 namespace container {
 

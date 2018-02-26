@@ -32,6 +32,7 @@ class ShmArea {
   char *Allocate(uint32_t bytes);
   uint32_t MemoryUsage() const;
   char *MemoryStart() const;
+  char *GetMemoryBuffer(uint32_t offset);
 
  private:
   uint32_t Init(uint32_t max_memory_size, bool force_reset = false);

@@ -26,6 +26,44 @@ namespace area {
         this->begin_alloc_ptr_ = shared_mem + sizeof(SuperBlock);
     };
 
+    // Init函数可以多进程/线程调用, 但是实际对SharedMemory的Init操作只会被执行一次
+    // force_reset很危险, 可以直接初始化SuperBlock中的参数,
+    // 无论这块共享内存是否初始化过
+    uint32_t ShmArea::Init(uint32_t max_memory_size, bool force_reset) {
+        assert(max_memory_size > 0 || !force_reset);
+
+        // 对共享内存文件上锁, lockf基于POSIX是线程安全的上锁方式
+        ::lockf(this->shm_fd_, F_LOCK, 0);
+
+        // 为了获取当前文件的大小
+        struct stat file_stat;
+        if (::fstat(this->shm_fd_, &file_stat) == -1) {
+            /* TODO: check the value of errno */
+        }
+
+        uint32_t init_memory_file_size = (uint32_t)file_stat.st_size;
+
+        // 如果文件大小小于SuperBlock的大小, 则认为这块共享内存文件没有初始化过
+        if (force_reset || init_memory_file_size < sizeof(SuperBlock)) {
+            init_memory_file_size = sizeof(SuperBlock) + max_memory_size;
+            ::ftruncate(this->shm_fd_, init_memory_file_size);
+            this->super_block_ = (SuperBlock *)mmap(NULL,
+                                                    sizeof(SuperBlock),
+                                                    PROT_READ | PROT_WRITE,
+                                                    MAP_SHARED,
+                                                    this->shm_fd_,
+                                                    0);
+            this->super_block_->max_memory_size.store(max_memory_size);
+            this->super_block_->memory_usage.store(0);
+            munmap(this->super_block_, sizeof(SuperBlock));
+        }
+
+        // 成员变量的填充不需要对文件进行操作, 所以在这里就可以解锁
+        ::lockf(this->shm_fd_, F_ULOCK, 0);
+
+        return init_memory_file_size;
+    }
+
     char* ShmArea::Allocate(uint32_t bytes) {
         assert(bytes > 0);
         uint32_t current_memory_usage = this->super_block_->memory_usage.load();
@@ -57,40 +95,7 @@ namespace area {
         return this->begin_alloc_ptr_;
     }
 
-    // Init函数可以多进程/线程调用, 但是实际对SharedMemory的Init操作只会被执行一次
-    // force_reset很危险, 可以直接初始化SuperBlock中的参数,
-    // 无论这块共享内存是否初始化过
-    uint32_t ShmArea::Init(uint32_t max_memory_size, bool force_reset) {
-        assert(max_memory_size > 0);
-        // 对共享内存文件上锁, lockf基于POSIX是线程安全的上锁方式
-        ::lockf(this->shm_fd_, F_LOCK, 0);
-
-        // 为了获取当前文件的大小
-        struct stat file_stat;
-        if (::fstat(this->shm_fd_, &file_stat) == -1) {
-            /* TODO: check the value of errno */
-        }
-
-        uint32_t init_memory_file_size = (uint32_t)file_stat.st_size;
-
-        // 如果文件大小小于SuperBlock的大小, 则认为这块共享内存文件没有初始化过
-        if (force_reset || init_memory_file_size < sizeof(SuperBlock)) {
-            init_memory_file_size = sizeof(SuperBlock) + max_memory_size;
-            ::ftruncate(this->shm_fd_, init_memory_file_size);
-            this->super_block_ = (SuperBlock *)mmap(NULL,
-                                                    sizeof(SuperBlock),
-                                                    PROT_READ | PROT_WRITE,
-                                                    MAP_SHARED,
-                                                    this->shm_fd_,
-                                                    0);
-            this->super_block_->max_memory_size.store(max_memory_size);
-            this->super_block_->memory_usage.store(0);
-            munmap(this->super_block_, sizeof(SuperBlock));
-        }
-
-        // 成员变量的填充不需要对文件进行操作, 所以在这里就可以解锁
-        ::lockf(this->shm_fd_, F_ULOCK, 0);
-
-        return init_memory_file_size;
+    char *ShmArea::GetMemoryBuffer(uint32_t offset) {
+        return this->begin_alloc_ptr_ + offset;
     }
 }

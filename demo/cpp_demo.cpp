@@ -10,17 +10,24 @@
 #include <chrono>
 #include <map>
 #include <set>
-#include "area/shm_area.h"
-
-#include "container/lockfree_skiplist.h"
-#include "container/lockfree_linklist.h"
-#include "container/shm_manager.h"
+//#include "core/area/shm_area.h"
+//
+//#include "core/container/lockfree_skiplist.h"
+//#include "core/container/lockfree_linklist.h"
+//#include "core/container/shm_manager.h"
 // #include <folly/ConcurrentSkipList.h>
 
 // using namespace folly;
 
+#include "wolf.h"
+
 
 int main(int argc, const char * argv[]) {
+
+    Wolf<int> wolf_home("/Users/wingerted/test_shared_memory_dat", 10000000, true);
+    wolf_home.Add(1);
+
+
 //    // insert code here...
 //    flatbuffers::FlatBufferBuilder builder(1024);
 //    auto key = builder.CreateString("Winger");
