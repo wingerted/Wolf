@@ -26,6 +26,7 @@ int main(int argc, const char * argv[]) {
 
     Wolf<int, int> wolf_home("/Users/wingerted/test_shared_memory_dat", 10000000, true);
     wolf_home.Add(1, 1);
+    wolf_home.Find(2);
 
 
 //    // insert code here...

@@ -48,9 +48,10 @@ public:
         }
     }
 
-//    void Find(const Data& data) {
-//        this->inner_data_->FindLessThan(data);
-//    }
+    bool Find(const Index& index) {
+        auto iter = this->inner_data_->FindLessThan(index);
+        return iter.Valid();
+    }
 
 private:
     const std::string index_path_;

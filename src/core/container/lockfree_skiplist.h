@@ -30,13 +30,15 @@ private:
     struct Node;
     struct Ref;
 public:
+    class Iterator;
+
     LockFreeSkipList(ShmManager* shm_manager,
                      bool reset = false,
                      Comparator cmp = DefaultComparator<Key>());
     
     bool Add(Key key, Value value);
     bool Remove(Key key);
-    Value FindLessThan(Key key);
+    Iterator FindLessThan(Key key);
     
 private:
     int RandomHeight();
@@ -57,6 +59,34 @@ private:
     ShmManager* shm_manager_;
     LockFreeSkipList<Key, Value, Comparator>::Node* head_;
 };
+
+template<typename Key, typename Value, class Comparator>
+class LockFreeSkipList<Key, Value, Comparator>::Iterator {
+public:
+    Iterator(LockFreeSkipList<Key, Value, Comparator>* skiplist,
+             Node* node): skiplist_(skiplist), node_(node) {}
+
+    bool Valid() const {
+        return this->node_->GetRef(0)->load().mark_removed;
+    }
+
+    const Key& key() const {
+        return this->node_->key;
+    }
+
+    const Value& value() const {
+        return this->node_->value;
+    }
+
+    void Next() {
+        this->node_ = this->skiplist_->GetNodeByOffset(this->node_->GetRef(0)->load().next_offset);
+    }
+
+    private:
+    LockFreeSkipList<Key, Value, Comparator>* skiplist_;
+    Node* node_;
+};
+
 
 template<typename Key, typename Value, class Comparator>
 struct LockFreeSkipList<Key, Value, Comparator>::Ref {
@@ -152,7 +182,8 @@ bool LockFreeSkipList<Key, Value, Comparator>::FindWindow(Key key,
 }
 
 template<typename Key, typename Value, class Comparator>
-Value LockFreeSkipList<Key, Value, Comparator>::FindLessThan(Key key) {
+//typename LockFreeSkipList<Key, Value, Comparator>::
+auto LockFreeSkipList<Key, Value, Comparator>::FindLessThan(Key key) -> Iterator {
     Node* pred = this->head_;
     for (int i=kMaxHeight-1; i>=0; --i) {
         Node* curr = this->GetNodeByOffset(pred->GetRef(i)->load().next_offset);
@@ -179,7 +210,7 @@ Value LockFreeSkipList<Key, Value, Comparator>::FindLessThan(Key key) {
         }
     }
 
-    return pred->value;
+    return Iterator(this, pred);
 }
     
 template<typename Key, typename Value, class Comparator>
